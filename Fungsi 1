@@ -1,0 +1,66 @@
+import pandas as pd
+import numpy as np
+
+#LOAD DATA
+dt = pd.read_excel('dataset fungsi 1.xlsx')
+dt.head()
+
+dt.info()
+dt.shape
+dt['Penyakit'].unique()
+dt['Penyakit'].value_counts()
+
+#Import label encoder
+from sklearn import preprocessing
+  
+#label_encoder object knows how to understand word labels.
+label_encoder = preprocessing.LabelEncoder()
+  
+#Encode labels in column 'species'.
+dt['Penyakit']= label_encoder.fit_transform(dt['Penyakit'])
+  
+dt['Penyakit'].unique()
+
+x = dt[['Sakit kepala','Perih Lambung', 'Lemas', 'Mual', 'Batuk', 'Sesak Nafas', 'Jantung abnormal']]
+y = dt['Penyakit']
+x
+y
+
+#SPLIT DATA
+from sklearn.model_selection import train_test_split #mengambil data test secara random dari 10% dataset
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.1)
+
+#MODELLING
+#import library 
+from tensorflow.keras.models import Sequential #model sequential 
+from tensorflow.keras.layers import Dense #membentuk layer yang bertumpuk
+
+model = Sequential()
+
+model.add(Dense(8, input_dim=7, activation="relu")) #input dimensi = 7 dari jumlah x
+model.add(Dense(16, activation="relu"))
+model.add(Dense(32, activation="relu"))
+model.add(Dense(64, activation="relu"))
+model.add(Dense(128, activation="relu"))
+model.add(Dense(356, activation="relu"))
+model.add(Dense(5, activation="softmax")) #karena ada 5 kelas [0,1,2,3,4]
+
+#Mengcompile model dengan optimizer sgd 
+model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy']) 
+model.summary()
+
+model.fit(x_train, y_train, batch_size = 1, epochs = 10, validation_split = 0.1)
+
+x_test
+
+#PREDIKSI
+y_pred = model.predict(x_test)
+y_pred = np.argmax(y_pred, axis=1) #select the index with the maximum probability
+y_pred
+
+#AKURASI
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test, y_pred)
+
+y_test
+model.save
