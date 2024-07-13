@@ -1,0 +1,156 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+#IMPORT LIBRARY
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+import pickle
+
+#LOAD DATA
+data = pd.read_excel('/content/drive/MyDrive/DL/tubes/dataset2.xlsx')
+data.head()
+
+data.info()
+data['Penyakit'].value_counts()
+import seaborn as sns
+sns.set_theme(style = 'whitegrid')
+sns.countplot(x = data['Penyakit'])
+
+#PREPROCESSING
+import re # menentukan sekumpulan string tertentu cocok dengan ekspresi reguler tertentu
+import string # library yang menyimpan fungsi-fungsi yang digunakan untuk menangani string ataupun substring
+
+def cleansing(text):
+    text = text.strip(" ")
+    text = re.sub(r'[?|$|.|!_:")(-+,]', '', text)
+    text = re.sub(r'\d+', '', text)
+    text = re.sub(r"\b[a-zA-Z]\b", "", text)
+    text = re.sub('\s+',' ', text)
+    return text
+data['Keluhan'] = data['Keluhan'].apply(cleansing)
+data.head(10)
+
+data['Keluhan'] = data['Keluhan'].str.lower()
+data.head()
+
+#TOKENIZE
+import nltk # library yang digunakan untuk pengolahan data bahasa manusia.
+nltk.download('punkt')
+
+from nltk.tokenize import word_tokenize
+#NLTK word tokenize
+def word_tokenize_wrapper(text):
+ return word_tokenize(text)
+data['Keluhan'] = data['Keluhan'].apply(word_tokenize_wrapper)
+data.head()
+
+#STEMMING
+pip install Sastrawi
+
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+
+def stemming(Review):
+    factory = StemmerFactory()
+    stemmer = factory.create_stemmer()
+    do = []
+    for w in Review:
+        dt = stemmer.stem(w)
+        do.append(dt)
+    d_clean=[]
+    d_clean=" ".join(do)
+    print(d_clean)
+    return d_clean
+data['Keluhan'] = data['Keluhan'].apply(stemming)
+
+data.to_csv('databersih.csv', index = False)
+data_clean = pd.read_csv('databersih.csv', encoding = 'latin1')
+data_clean.head()
+
+#SPLIT DATA
+keluhan = data.values[:,0]
+keluhan
+
+#Import label encoder
+from sklearn import preprocessing
+
+#label_encoder object knows how to understand word labels.
+label_encoder = preprocessing.LabelEncoder()
+
+#Encode labels in column 'species'.
+data_clean['Penyakit']= label_encoder.fit_transform(data_clean['Penyakit'])
+
+data_clean['Penyakit'].unique()
+
+label_encoder.classes_
+penyakit = data_clean.values[:,-1].astype(int)
+penyakit
+
+#MODELLING MENGGUNAKAN ALGORTIMA GRU
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+token = Tokenizer()
+token.fit_on_texts(keluhan)
+
+v_kalimat = token.texts_to_sequences(keluhan)
+v_kalimat
+
+panjang = max([len(kalimat.split()) for kalimat in keluhan])
+v_kalimat = pad_sequences(v_kalimat, maxlen = panjang, padding = "post")
+kata = len(token.index_word)
+
+from keras.models import Sequential
+from keras.layers import GRU, TimeDistributed, Dense, Embedding, Bidirectional, Dropout
+
+model = Sequential()
+model.add(Embedding(kata+1, 16, input_length = v_kalimat.shape[1], input_shape = v_kalimat.shape[1:]))
+model.add(Bidirectional(GRU(512)))
+model.add(Dense(32, activation = "relu"))
+model.add(Dropout(0.2))
+model.add(Dense(5, activation = "softmax"))
+model.compile(optimizer = "adam",
+              loss = "sparse_categorical_crossentropy",
+              metrics = ["accuracy"])
+model.summary()
+
+import tensorflow as tf
+tf.keras.utils.plot_model(model)
+
+history = model.fit(v_kalimat, penyakit, batch_size = 1, epochs = 50, validation_split = 0.2)
+
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc = 'upper left')
+plt.show()
+
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc = 'upper left')
+plt.show()
+
+label_f2 = {0: 'Anemia',
+            1: "Asma",
+            2: 'Insomnia',
+            3: 'Maag',
+            4: 'Sehat'}
+
+test_kalimat = ["bangun pada malam hari atau dini hari dan tidak"]
+#panjang = max([len(kalimat.split()) for kalimat in test_kalimat ])
+test_kalimat = token.texts_to_sequences(test_kalimat)
+test_kalimat = pad_sequences(test_kalimat, maxlen = 21, padding = "post")
+
+y_pred = model.predict(test_kalimat)
+y_pred = label_f2[np.argmax(y_pred)]
+print('Hasil_prediksi' == "{}".format(y_pred))
+
+index = np.argmax(y_pred)
+label_encoder.classes_[index]
+model.save('modelfungsi2.h5')
