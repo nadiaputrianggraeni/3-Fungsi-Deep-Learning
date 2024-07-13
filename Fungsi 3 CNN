@@ -1,0 +1,201 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+import glob #importing the glob module
+import cv2  #untuk mengolah gambar hingga mampu meng-ekstrak informasi didalamnya
+import numpy as np
+
+x = [] #kantong data train
+y = [] #kantong label
+
+# Load the images and resize
+for nama_gambar in glob.glob('/content/drive/MyDrive/object detection/object/Jerawat Papula/*.jpg'):
+  gambar = cv2.imread(nama_gambar)
+  gambar = cv2.resize(gambar, (64,64))
+  gambar = gambar/255
+  x.append(gambar)
+  y.append(0)
+
+for nama_gambar in glob.glob('/content/drive/MyDrive/object detection/object/Jerawat Pustula/*.jpg'):
+  gambar = cv2.imread(nama_gambar)
+  gambar = cv2.resize(gambar, (64,64))
+  gambar = gambar/255
+  x.append(gambar)
+  y.append(1)
+
+for nama_gambar in glob.glob('/content/drive/MyDrive/object detection/object/Nodules/*.jpg'):
+  gambar = cv2.imread(nama_gambar)
+  gambar = cv2.resize(gambar, (64,64))
+  gambar = gambar/255
+  x.append(gambar)
+  y.append(2)
+
+for nama_gambar in glob.glob('/content/drive/MyDrive/object detection/object/rosacea/*.jpg'):
+  gambar = cv2.imread(nama_gambar)
+  gambar = cv2.resize(gambar, (64,64))
+  gambar = gambar/255
+  x.append(gambar)
+  y.append(3)
+
+for nama_gambar in glob.glob('/content/drive/MyDrive/object detection/object/blackhead/*.jpg'):
+  gambar = cv2.imread(nama_gambar)
+  gambar = cv2.resize(gambar, (64,64))
+  gambar = gambar/255
+  x.append(gambar)
+  y.append(4)
+
+gambar.shape
+
+import numpy as np
+import random
+
+z = list(zip(x,y)) #menyatukan x, y dalam satu variable dengan menggunakan zip
+random.shuffle(z) #merandom variable z
+x,y = zip(*z) #ekstrak kembali menjadi x,y
+x = np.asarray(x)
+y = np.asarray(y)
+
+#MODELLING CNN
+from keras.layers.pooling.max_pooling2d import MaxPooling2D
+from keras.models import Sequential
+from keras.layers import Flatten, Dense, Conv2D, MaxPool2D
+
+model1 = Sequential()
+
+model1.add(Conv2D(8, (3,3), input_shape=(64,64,3), activation = 'relu'))
+model1.add(MaxPooling2D(2,2))
+model1.add(Conv2D(16, (3,3), activation = 'relu')) #additional layer of convolutional for better accuracy
+model1.add(MaxPooling2D(2,2))
+model1.add(Conv2D(32, (3,3), activation = 'relu'))
+model1.add(MaxPooling2D(2,2))
+
+#Flattening
+model1.add(Flatten())
+
+#Fully Connected Neural Network
+model1.add(Dense(12, activation = 'relu'))
+model1.add(Dense(5, activation="softmax")) # klasifikasi dari 5 kelas
+
+#Compiling the CNN
+model1.compile(optimizer = 'adam',
+              loss = 'sparse_categorical_crossentropy',
+              metrics = ['accuracy'])
+
+model1.summary()
+
+#Starting the model training
+model1.fit(x,y, batch_size = 1, epochs = 50, validation_split = 0.2)
+
+#TESTING
+x_test = []
+y_test = []
+
+gambar = cv2.imread('nod.jpg')
+gambar = cv2.resize(gambar,(64,64))/255
+
+x_test.append(gambar)
+x_test = np.asarray(x_test)
+
+y_pred = model1.predict(x_test)
+y_pred = (y_pred  > 0.5)*1
+
+y_pred
+
+x_test = []
+y_test = []
+
+gambar = cv2.imread('testing.jpg')
+gambar = cv2.resize(gambar,(64,64))/255
+
+x_test.append(gambar)
+x_test = np.asarray(x_test)
+
+pred = model1.predict(x_test)
+pred = (pred  > 0.5)*1
+
+pred
+
+x_test = []
+y_test = []
+
+gambar = cv2.imread('puss.jpg')
+gambar = cv2.resize(gambar,(64,64))/255
+
+x_test.append(gambar)
+x_test = np.asarray(x_test)
+
+y_pre = model1.predict(x_test)
+y_pre = (y_pre  > 0.5)*1
+
+y_pre
+
+kamus = {0:'Papula', 1:'Pustula', 2:'Nodules', 3:'Blackhead', 4:'Rosacea'}
+
+y_pred = np.argmax(y_pred, axis = 1)
+y_pred = [kamus[i] for i in y_pred]
+y_pred
+
+y_pre = np.argmax(y_pre, axis = 1)
+y_pre = [kamus[i] for i in y_pre]
+y_pre
+
+y_pred1 = np.argmax(y_pred1, axis = 1)
+y_pred1 = [kamus[i] for i in y_pred1]
+y_pred1
+
+#MENYIMPAN MODEL
+model1.save('modelfungsi3.h5')
+
+#LOAD MODEL TERBAIK YANG SUDAH DI TRAINING
+model1.load_weights('modelf3.h5')
+
+#TESTING
+x_test = []
+y_test = []
+
+gambar = cv2.imread('puss.jpg')
+gambar = cv2.resize(gambar,(64,64))/255
+
+x_test.append(gambar)
+x_test = np.asarray(x_test)
+
+y_pre = model1.predict(x_test)
+y_pre = (y_pre  > 0.5)*1
+
+y_pre
+
+kamus = {0:'Papula', 1:'Pustula', 2:'Nodules', 3:'Blackhead', 4:'Rosacea'}
+y_pre = np.argmax(y_pre, axis = 1)
+y_pre = [kamus[i] for i in y_pre]
+y_pre
+
+x_test = []
+y_test = []
+
+gambar = cv2.imread('nod.jpg')
+gambar = cv2.resize(gambar,(64,64))/255
+
+x_test.append(gambar)
+x_test = np.asarray(x_test)
+
+y_pred = model1.predict(x_test)
+y_pred = (y_pred  > 0.5)*1
+
+y_pred
+
+kamus = {0:'Papula', 1:'Pustula', 2:'Nodules', 3:'Blackhead', 4:'Rosacea'}
+y_pred = np.argmax(y_pred, axis = 1)
+y_pred = [kamus[i] for i in y_pred]
+y_pred
+
+kamus = {0:'Papula', 1:'Pustula', 2:'Nodules', 3:'Blackhead', 4:'Rosacea'}
+y_pred = np.argmax(y_pred, axis = 1)
+y_pred = [kamus[i] for i in y_pred]
+y_pred
+
+[[_, _*2] for _ in 'malai']
+
+_ = []
+for i in range(10):
+  _.append([])
+_
